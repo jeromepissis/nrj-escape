@@ -147,6 +147,7 @@ Spider.prototype.die = function () {
 PlayState = {};
 
 const LEVEL_COUNT = 4;
+var playGame = false;
 
 PlayState.init = function (data) {
     this.game.renderer.renderSession.roundPixels = true;
@@ -180,7 +181,6 @@ PlayState.preload = function () {
     this.game.load.image('font:numbers', 'images/numbers.png');
 
     this.game.load.image('background', 'images/background.png');
-    this.game.load.image('backgroundEnd', 'images/background_end.png');
     this.game.load.image('ground', 'images/ground.png');
     this.game.load.image('grass:16x1', 'images/grass_16x1.png');
     this.game.load.image('grass:8x1', 'images/grass_8x1.png');
@@ -208,30 +208,37 @@ PlayState.preload = function () {
     this.game.load.audio('sfx:key', 'audio/key.wav');
     this.game.load.audio('sfx:door', 'audio/door.wav');
     this.game.load.audio('sfx:bebe', 'audio/bebe.wav');
+    this.game.load.audio('sfx:ingame', 'audio/ingame.wav');
 };
 
 PlayState.create = function () {
-    // create sound entities
-    this.sfx = {
-        jump: this.game.add.audio('sfx:jump'),
-        coin: this.game.add.audio('sfx:coin'),
-        stomp: this.game.add.audio('sfx:stomp'),
-        key: this.game.add.audio('sfx:key'),
-        door: this.game.add.audio('sfx:door'),
-        bebe: this.game.add.audio('sfx:bebe')
-    };
+    if (!playGame) {
+        playGame = true;
+        // create sound entities
+        this.sfx = {
+            jump: this.game.add.audio('sfx:jump'),
+            coin: this.game.add.audio('sfx:coin'),
+            stomp: this.game.add.audio('sfx:stomp'),
+            key: this.game.add.audio('sfx:key'),
+            door: this.game.add.audio('sfx:door'),
+            bebe: this.game.add.audio('sfx:bebe'),
+            ingame: this.game.add.audio('sfx:ingame')
+        };
+        
+        this.sfx.ingame.play();
+    }
     
     // create level
     if (this.level < 3){
-        this.game.add.image(0, 0, 'background');        
+        this.game.add.image(0, 0, 'background');  
     }else{
-        this.game.add.image(0, 0, 'backgroundEnd');
+        this.sfx.ingame.stop();
+        this.game.state.start('end', true, false, {level: 0});
     }
     
     this._loadLevel(this.game.cache.getJSON(`level:${this.level}`));    
     // create hud with scoreboards
     this._createHud();
-
 };
 
 PlayState.update = function () {
@@ -377,6 +384,8 @@ PlayState._onHeroVsEnemy = function (hero, enemy) {
     else { // game over -> restart the game
         this.sfx.bebe.play();
         hero.isdie = true;
+        this.sfx.ingame.stop();
+        playGame = false;
         hero.die(this.level);
     }
 };
@@ -444,6 +453,22 @@ function actionOnClick () {
     this.game.state.start('play', true, false, {level: 0});
 }
 
+
+EndState = {};
+
+EndState.preload = function () {
+    this.game.load.audio('sfx:end', 'audio/end.wav');
+    this.game.load.image("end","images/background_end.png");
+}
+EndState.create = function () {
+    // create sound entities
+    this.sfx = {
+        intro: this.game.add.audio('sfx:end')
+    };
+    this.sfx.intro.play();  
+        
+    this.game.add.image(0, 0, 'end'); 
+}
     
 
 // =============================================================================
@@ -453,6 +478,7 @@ function actionOnClick () {
 window.onload = function () {    
     let game = new Phaser.Game(960, 648, Phaser.AUTO, 'game');
     game.state.add('play', PlayState);
+    game.state.add('end', EndState);
     game.state.add('menu', MenuState);
     game.state.start('menu');
 };
